@@ -46,3 +46,15 @@ cd ~/catkin_ws
 rosdep install --from-paths src --ignore-src -r -y
 catkin build
 source devel/setup.bash
+
+### 2. Launch the Full Stack
+
+The single launch file (`pick_n_place.launch`) starts the full autonomous stack, including:
+
+1.  **Simulation & Planning:** Gazebo (robot + environment) and MoveIt! (`panda_moveit_config`).
+2.  **Object Spawning:** Nodes to spawn the Red, Green, Blue) and ArUco cubes.
+3.  **Perception Nodes:** `color_perception_node` and `aruco_perception_node`.
+4.  **Core Controller:** `pick_and_place_core_node` (State Machine / Motion Control).
+
+```bash
+roslaunch franka_lab_dev pick_n_place.launch
