@@ -58,3 +58,27 @@ The single launch file (`pick_n_place.launch`) starts the full autonomous stack,
 
 ```bash
 roslaunch franka_lab_dev pick_n_place.launch
+
+## Results and Metrics 📈
+
+*(Quantify the performance of your system here. Run 10-20 Pick-and-Place cycles and record the data to make this section highly impactful).*
+
+| Metric | Result (Example) |
+| :--- | :--- |
+| **Success Rate (20 runs)** | 96% (28/30) |
+| **Average Pick Time** | 9.0 seconds |
+| **Failure Mode** | Mis-detection due to shadow (2 case) |
+
+---
+
+## License
+
+This project is licensed under the **Apache License 2.0**.
+
+---
+
+## Contact
+
+* **Author:** Nazario Pizzicoli
+* **GitHub:** [https://github.com/NazarioPizzicoli](https://github.com/NazarioPizzicoli)
+* **Email:** (nazario.pizzicoli@edu.unifi.it)
