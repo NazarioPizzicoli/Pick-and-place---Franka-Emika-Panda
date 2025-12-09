@@ -19,7 +19,8 @@
     <param name="/use_sim_time" value="true"/>
 
     <rosparam command="load" file="$(find project)/config/pick_and_place_params.yaml" 
-              ns="/pick_and_place_config" />
+              ns="/pick_and_place_config" 
+    />
 
     <include file="$(find panda_moveit_config)/launch/demo_gazebo.launch" 
              pass_all_args="true"/>
@@ -35,20 +36,14 @@
         args="-file $(env HOME)/.gazebo/models/aruco_cube/model.sdf -sdf -model aruco_cube -x 0.5 -y -0.1 -z 1.03"
         output="screen" />
     
-    <node pkg="project" type="spawn_red_cube.py" name="spawn_red_cube" output="screen" 
-        launch-prefix="bash -c 'sleep 3.0; $0 $@'"/>
-    <node pkg="project" type="spawn_green_cube.py" name="spawn_green_cube" output="screen"
-        launch-prefix="bash -c 'sleep 3.0; $0 $@'"/>
-    <node pkg="project" type="spawn_blue_cube.py" name="spawn_blue_cube" output="screen"
-        launch-prefix="bash -c 'sleep 3.0; $0 $@'"/>
+    <node pkg="project" type="spawn_red_cube.py" name="spawn_red_cube" output="screen"/>
+    <node pkg="project" type="spawn_green_cube.py" name="spawn_green_cube" output="screen"/>
+    <node pkg="project" type="spawn_blue_cube.py" name="spawn_blue_cube" output="screen"/>
 
-    <node pkg="project" type="pick_and_place_core.py" name="pick_and_place_core_node" output="screen"
-        launch-prefix="bash -c 'sleep 5.0; $0 $@'"/>
+    <node pkg="project" type="pick_and_place_core.py" name="pick_and_place_core_node" output="screen"/>
     
-    <node pkg="project" type="color_perception.py" name="color_perception_node" output="screen"
-        launch-prefix="bash -c 'sleep 7.0; $0 $@'"/>
+    <node pkg="project" type="color_perception.py" name="color_perception_node" output="screen"/>
     
-    <node pkg="project" type="aruco_perception.py" name="aruco_perception_node" output="screen"
-        launch-prefix="bash -c 'sleep 20.0; $0 $@'"/>
+    <node pkg="project" type="aruco_perception.py" name="aruco_perception_node" output="screen"/>
 
 </launch>
