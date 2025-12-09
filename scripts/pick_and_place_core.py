@@ -6,11 +6,12 @@ import moveit_commander
 import geometry_msgs.msg
 import numpy as np
 import tf.transformations as tft
+from sensor_msgs.msg import Image # Necessario per wait_for_message sulle immagini di debug
 
 class PickAndPlaceCore:
     def __init__(self):
         moveit_commander.roscpp_initialize(sys.argv)
-        rospy.init_node("pick_and_place_core_node", anonymous=True) 
+        rospy.init_node("pick_and_place_core_node", anonymous=True)
 
         # Load parameters
         try:
@@ -40,19 +41,21 @@ class PickAndPlaceCore:
         # Stato della State Machine: Flag di blocco
         self.is_busy = False 
         self.target_sub = None # Variabile per tenere traccia dell'oggetto Subscriber
-        self.start_subscription() # NUOVO: Avvia la sottoscrizione
-        rospy.loginfo("Pick and Place Core avviato. In attesa del target...")
+        
+        rospy.loginfo("Pick and Place Core avviato. Aspettando che la Percezione sia attiva...")
+        
+        # NUOVA LOGICA DI ATTESA: Assicura che i nodi di percezione stiano pubblicando (usiamo il topic di debug)
+        try:
+            rospy.wait_for_message("/color_detection/image_debug", Image, timeout=20.0)
+            rospy.loginfo("Percezione colore online.")
+        except rospy.ROSException:
+            rospy.logwarn("Timeout. Il nodo di percezione colore non sembra essere attivo.")
+
+        self.start_subscription() # Avvia la sottoscrizione
+        
         # Inizializzazione a Home (Movimento bloccante)
         rospy.sleep(1.0) # Aspetta che moveit sia pronto
         self.move_to_joints(self.home_joints, "Home Iniziale")
-        
-        # Sottoscrizione al topic di Percezione
-        # Queue size 1 assicura che il subscriber conservi solo l'ultimo messaggio ricevuto.
-        #rospy.Subscriber("/cube_pose_stamped", geometry_msgs.msg.PoseStamped, self.target_callback, queue_size=1) 
-        #rospy.loginfo("Pick and Place Core avviato. In attesa del target...")
-        # Inizializzazione a Home (Movimento bloccante)
-        #rospy.sleep(1.0) # Aspetta che moveit sia pronto
-        #self.move_to_joints(self.home_joints, "Home Iniziale")
     # NUOVI METODI PER GESTIRE LA SOTTOSCRIZIONE
     def start_subscription(self):
         """Attiva la sottoscrizione al topic /cube_pose_stamped."""
