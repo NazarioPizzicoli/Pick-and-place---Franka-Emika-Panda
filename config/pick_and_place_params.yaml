@@ -1,0 +1,40 @@
+# config/pick_and_place_params.yaml
+
+robot_settings:
+  planning_time:           10.0
+  velocity_scaling_factor: 0.7
+
+pick_parameters:
+  # Compensazioni per l'orientamento del gripper (in radianti)
+  roll_fixed:       -3.14159  # -np.pi
+  pitch_fixed:       0.0
+  yaw_compensation: -0.78539 # -pi/2 + pi/4
+  
+  # Offset Z di sicurezza (sollevamento / discesa finale)
+  pre_pick_offset_z: 0.20 # 20 cm sopra il cubo
+  pick_offset_z:     0.10   # 10 cm sopra la posa del cubo (per il centro di massa)
+
+joint_targets:
+  home: [-0.000, -0.786, -0.000, -2.356, 0.000, 1.572, 0.785]
+  
+  place_rosso:     [-0.722, -0.889, 1.297, -1.632, 0.829, 1.444, 1.388]
+  place_verde:     [-0.722, -0.889, 1.297, -1.632, 0.829, 1.444, 1.388]
+  place_blu:       [-0.722, -0.889, 1.297, -1.632, 0.829, 1.444, 1.388]
+  place_aruco:     [-0.722, -0.889, 1.297, -1.632, 0.829, 1.444, 1.388]
+  pre_place_rosso: [-1.018, -0.771, 1.384, -1.046, 0.778, 1.104, 1.535]
+  pre_place_verde: [-1.018, -0.771, 1.384, -1.046, 0.778, 1.104, 1.535]
+  pre_place_blu:   [-1.018, -0.771, 1.384, -1.046, 0.778, 1.104, 1.535]
+  pre_place_aruco: [-1.018, -0.771, 1.384, -1.046, 0.778, 1.104, 1.535]
+
+perception_params:
+  camera_frame:   "camera_link_optical"
+  base_frame:     "panda_link0"
+  table_height_z: 0.055 # Altezza del tavolo in TARGET_FRAME
+  
+  # Range HSV per colore: [H_min, S_min, V_min, H_max, S_max, V_max]
+  # Nota: il rosso ha due range (0-10) e (170-180)
+  color_ranges:
+    rosso_1: [0, 100, 70, 10, 255, 255]
+    rosso_2: [170, 100, 70, 180, 255, 255]
+    verde:   [40, 100, 100, 80, 255, 255] 
+    blu:     [90, 100, 70, 128, 255, 255]
