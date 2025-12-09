@@ -22,10 +22,6 @@ The system is engineered with a modular ROS architecture, demonstrating advanced
 
 The system operates via three main nodes communicating through the shared pose topic.
 
-<p align="center" width="100%">
-    <img src="assets/architecture_diagram.png" width="600" alt="ROS Architecture Diagram showing perception nodes publishing to /cube_pose_stamped, and the core node subscribing to it and communicating with MoveIt!">
-</p>
-
 ## Prerequisites
 
 The project was primarily developed and tested with:
