@@ -58,10 +58,8 @@ The single launch file (`pick_n_place.launch`) starts the full autonomous stack,
 
 ```bash
 roslaunch franka_lab_dev pick_n_place.launch
-
+```
 ## Results and Metrics 📈
-
-*(Quantify the performance of your system here. Run 10-20 Pick-and-Place cycles and record the data to make this section highly impactful).*
 
 | Metric | Result (Example) |
 | :--- | :--- |
