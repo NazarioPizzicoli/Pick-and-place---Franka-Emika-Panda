@@ -1,3 +1,51 @@
+# 🤖 Franka Panda Autonomous Pick-and-Place (ROS / MoveIt! — Gazebo)
+
+This repository implements a robust **Pick-and-Place** pipeline for the 7-DoF Franka Emika Panda robot, utilizing 3D vision for object detection based on **Color** and **ArUco Markers**.
+
+<p align="center" width="100%">
+    <img src="assets/pick_and_place_overview.png" width="600" alt="Franka Panda in Gazebo performing a pick-and-place task">
+</p>
+
+## Key Features
+
+The system is engineered with a modular ROS architecture, demonstrating advanced skills in software integration and motion planning.
+
+* **Dual Perception:** Object localization via:
+    * **Color Segmentation (HSV):** Detection of Red, Green, and Blue cubes.
+    * **ArUco Markers:** Robust pose estimation of complex objects.
+* **3D Pose Estimation:** Ray-casting projection onto the table plane, integrated with ROS TF transforms.
+* **MoveIt! Controller:** Collision-free motion planning for a complete Pick-and-Place sequence, fully configured with external YAML parameters (offsets, planning time, velocity scaling).
+* **State Machine:** Centralized control (`pick_and_place_core.py`) that subscribes to the shared `/cube_pose_stamped` topic and orchestrates the full sequence.
+
+<p align="center" width="100%">
+    <img src="assets/architecture_diagram.png" width="600" alt="ROS Architecture Diagram">
+</p>
+
+## Prerequisites
+
+The project was developed and tested with ROS Noetic on Ubuntu 20.04 LTS.
+
+Install standard ROS dependencies and the required Franka packages:
+* ROS Noetic / Melodic
+* Gazebo 11
+* MoveIt!
+* `panda_moveit_config` (or similar Franka MoveIt package)
+
+The Python dependencies (e.g., `cv_bridge`, `image_geometry`, `tf`, `moveit_commander`) are specified in `package.xml`.
+
+## Usage
+
+### 1. Build and Setup
+
+```bash
+# Clone the repository into your catkin workspace's src folder
+cd ~/catkin_ws/src
+git clone [https://github.com/NazarioPizzicoli/Pick-and-place---Franka-Emika-Panda.git](https://github.com/NazarioPizzicoli/Pick-and-place---Franka-Emika-Panda.git) franka_lab_dev
+cd ~/catkin_ws
+rosdep install --from-paths src --ignore-src -r -y
+catkin build
+source devel/setup.bash
+
 # 🤖 Franka Emika Panda Autonomous Pick-and-Place (ROS / MoveIt! — Gazebo Simulation)
 
 Project overview
