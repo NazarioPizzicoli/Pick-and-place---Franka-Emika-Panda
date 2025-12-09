@@ -1,50 +1,112 @@
-# 🤖 Franka Panda Pick-and-Place Autonomo (ROS/MoveIt! - Simulazione Gazebo)
+# 🤖 Franka Emika Panda Autonomous Pick-and-Place (ROS / MoveIt! — Gazebo Simulation)
 
-Questo progetto implementa un sistema robusto di **Pick-and-Place** per il robot a 7 gradi di libertà **Franka Emika Panda** in ambiente simulato (Gazebo). Il sistema utilizza la visione artificiale per localizzare oggetti colorati o marcatori ArUco e la libreria **MoveIt!** per la pianificazione e l'esecuzione di traiettorie collision-free.
+Project overview
+----------------
+This repository implements a robust Pick-and-Place pipeline for the 7-DoF Franka Emika Panda robot in simulation (Gazebo), using ROS and MoveIt!. The system integrates 3D perception, motion planning, and a state machine to perform autonomous pick-and-place tasks in cluttered scenes.
 
-L'obiettivo è dimostrare competenze avanzate in **integrazione software robotica**, **motion planning** e **visione artificiale 3D**.
+The project demonstrates advanced skills in robotic software integration, motion planning, and 3D computer vision suitable for research and industry roles.
 
-## ✨ Caratteristiche Tecniche
+Key technical highlights
+------------------------
+- Platform: Franka Emika Panda (7 DoF) simulated with Gazebo.
+- Framework: ROS (Melodic / Noetic) + MoveIt! for inverse kinematics and collision-free motion planning.
+- Architecture: Modular ROS nodes (Perception, Planner/Controller, State Machine) for maintainability and extensibility.
+- Perception:
+  - Object detection via Color Thresholding (HSV using OpenCV).
+  - Marker detection via ArUco markers (OpenCV).
+  - 3D pose estimation using ray-casting and ROS TF transforms.
+- Controller: MoveIt! interface controlling `panda_arm` and gripper (`panda_hand`).
+- Configuration: All critical parameters (pose offsets, target poses, HSV ranges) are externalized to YAML files for easy calibration.
 
-* **Robot & Piattaforma:** Franka Emika Panda (7 DoF) su ROS Melodic/Noetic.
-* **Motion Planning:** **MoveIt!** per pianificazione cinematica inversa e traiettorie collision-free.
-* **Architettura:** Nodi ROS separati (Percezione, Planner, Controller, State Machine) per alta modularità.
-* **Visione (Perception):**
-    * Riconoscimento di oggetti tramite **Color Thresholding** (HSV/OpenCV).
-    * Riconoscimento di oggetti tramite **Marcatori ArUco** (libreria OpenCV).
-    * **Localizzazione 3D:** Calcolo della posa (XYZ + Orientamento) tramite **Ray-Casting** e **TF (ROS Transformations)**.
-* **Controller:** Gestione diretta del gruppo `panda_arm` e `panda_hand` (gripper).
-* **Configurazione:** Tutti i parametri critici (offset, pose target, range HSV) sono gestiti tramite file **YAML** esterni per una facile calibrazione.
+Repository structure
+--------------------
+- package.xml, CMakeLists.txt — ROS package metadata and build configuration.
+- launch/ — ROS launch files for starting the simulation, MoveIt!, and the node stack.
+- config/ — YAML parameter files (HSV ranges, pose offsets, node parameters).
+- scripts/ — Python ROS nodes and utilities (perception, motion controller, state machine).
+- README.md — Project documentation (this file).
+- LICENSE — License for the project.
 
-## 📐 Architettura del Sistema (ROS Nodes)
+Node-level architecture (conceptual)
+------------------------------------
+- perception_color (colore.py): detects objects using HSV color thresholds, publishes PoseStamped on `/cube_pose_stamped`.
+- perception_aruco (marker.py): detects ArUco markers and publishes their poses.
+- motion_controller (movimento.py): MoveIt! wrapper to perform pick / place trajectories and gripper commands.
+- state_machine (state_machine.py): orchestrates the operation, subscribes to perception topics, and calls motion_controller actions to execute pick-and-place.
 
-La logica è orchestrata da una **State Machine** che coordina i seguenti nodi:
+Quick start (recommended)
+-------------------------
+Prerequisites
+- Ubuntu (matching the ROS distro: 18.04 for Melodic, 20.04 for Noetic)
+- ROS Melodic or Noetic
+- Gazebo (matching your ROS distro)
+- MoveIt! and a compatible Franka MoveIt configuration (e.g., `panda_moveit_config`)
 
-
-| Nodo | Scopo | Interfacce Principali | File Corrispondente |
-| :--- | :--- | :--- | :--- |
-| `perception_colore` / `perception_aruco` | Rilevazione e localizzazione 3D del target. | **Pubblica:** `/cube_pose_stamped` (`PoseStamped`) | `colore.py`, `marker.py` |
-| `controller_planner` | Funzioni a basso livello di movimento (MoveIt!) e controllo del gripper. | **Espone:** Funzioni di movimento (interne o come Service/Action). | `movimento.py` (Rinominato) |
-| `state_machine` | Gestione sequenziale dell'operazione Pick-and-Place. | **Logica:** Chiama le funzioni di movimento del planner quando riceve un nuovo target dal topic di percezione. | `state_machine.py` (NUOVO) |
-
-## 🚀 Esecuzione del Progetto (Simulazione)
-
-### Prerequisiti
-
-Assicurati di avere un'installazione funzionante di **ROS** (es. Noetic/Melodic), **Gazebo** e la configurazione **MoveIt!** per la Franka Panda (es. `panda_moveit_config`).
-
-### 1. Installazione e Compilazione
-
+Example steps
+1. Clone the workspace:
 ```bash
-# Clona il workspace
-git clone [https://github.com/tuo_nome_utente/franka_pick_and_place_ws.git](https://github.com/tuo_nome_utente/franka_pick_and_place_ws.git)
+git clone https://github.com/<your_username>/franka_pick_and_place_ws.git
 cd franka_pick_and_place_ws/src
-git submodule update --init --recursive # Se hai sottomoduli (es. librerie Franka)
+# Add this repository
+git clone https://github.com/NazarioPizzicoli/Pick-and-place---Franka-Emika-Panda.git
 cd ..
-
-# Installazione delle dipendenze del pacchetto 'challenge'
-rosdep install --from-paths src --ignore-src -r -y 
-
-# Compilazione
-catkin build 
+rosdep install --from-paths src --ignore-src -r -y
+catkin build
 source devel/setup.bash
+```
+
+2. Launch simulation + MoveIt! + stack (example)
+```bash
+# Launch the robot in Gazebo with MoveIt! and the package nodes
+roslaunch franka_pick_and_place demo_simulation.launch
+```
+(Replace with the actual launch filename in `launch/`.)
+
+3. Run the pick-and-place demo
+- The state machine will wait for perception messages (`/cube_pose_stamped`). When a pose appears, it plans and executes a pick followed by a place.
+
+Configuration and calibration
+-----------------------------
+- All calibration values are stored in YAML files in `config/`. Typical parameters:
+  - HSV color thresholds for the target object
+  - Pose offsets for gripper approach and grasp
+  - Planner parameters (velocity/acceleration scaling)
+- Provide a `calibrate_hsv.py` visualization tool (or use `rqt_image_view`) to tune HSV params.
+
+Results and evaluation
+----------------------
+- Include (or add) a short demo GIF and links to recorded video; recruiters and interviewers like seeing tangible outcomes.
+- Recommended metrics to add: success rate across N runs, average pick time, failure cases (collisions, mis-detections).
+
+Why this project is relevant to recruiters (CV bullets)
+-------------------------------------------------------
+- Designed and implemented a full-stack robotic solution integrating perception, planning and control for a 7-DoF manipulator.
+- Implemented robust 3D object localization using color segmentation and ArUco markers; integrated with TF and MoveIt!.
+- Built modular ROS nodes for perception, planning and state sequencing to increase testability and reusability.
+- Tuned motion planner parameters for trajectory smoothness and collision avoidance in simulation.
+- Demonstrated practical experience with ROS, Gazebo, MoveIt!, OpenCV and modern robotics software practices.
+
+Roadmap & suggested improvements
+-------------------------------
+(These items will strengthen the project and its appeal)
+- Add a Dockerfile / reproducible CI environment to reproduce the workspace easily.
+- Add GitHub Actions: build the package, run linters (flake8/black), and optionally run simulation smoke-tests.
+- Write unit and integration tests for the Python nodes (rosbag-based integration tests for perception).
+- Add demo assets (GIFs, short videos) and a `results/` section with performance statistics.
+- Rename Italian file names to English for consistency and wider audience comprehension.
+- Add an architecture diagram (SVG/PNG) and sequence diagram for the state machine.
+- Provide step-by-step troubleshooting and hardware safety notes if porting to real robot.
+
+License
+-------
+This project includes a LICENSE file. If you prefer a permissive license for recruiters/companies, consider MIT or Apache 2.0; if you prefer copyleft, GPL is okay — choose intentionally and document the decision.
+
+Contact
+-------
+- Author: Nazario Pizzicoli
+- GitHub: https://github.com/NazarioPizzicoli
+- Email: (add your preferred contact email here)
+
+Acknowledgements
+----------------
+This project builds on open-source ROS and MoveIt! libraries, and uses OpenCV for perception tasks.
