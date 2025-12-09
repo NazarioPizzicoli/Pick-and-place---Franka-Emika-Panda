@@ -8,6 +8,7 @@ from geometry_msgs.msg import PoseStamped, Quaternion
 from image_geometry import PinholeCameraModel
 import tf 
 import tf.transformations as tft
+from .perception_utils import calculate_3d_pose # NUOVA IMPORTAZIONE
 
 class ArucoPerceptionNode:
     def __init__(self):
@@ -79,7 +80,6 @@ class ArucoPerceptionNode:
         
         # Stima la posa per il primo marker trovato
         rvecs, tvecs, _ = cv2.aruco.estimatePoseSingleMarkers(corners, self.MARKER_SIZE, K, D)
-        tvec = tvecs[0]
         rvec = rvecs[0]
 
         # 1. Calcoliamo il centro del marker in pixel (u,v)
@@ -87,37 +87,26 @@ class ArucoPerceptionNode:
         u = int(np.mean(marker_corners[:, 0]))
         v = int(np.mean(marker_corners[:, 1]))
 
-        # 2. Proiettiamo un raggio da (u,v) per trovare la posizione 3D sul tavolo
-        try:
-            ray_camera = self.camera_model.projectPixelTo3dRay((u, v))
-            ray_camera = np.array(ray_camera)
-            
-            # Usiamo il timestamp del messaggio (msg.header.stamp) per la TF
-            self.tf_listener.waitForTransform(self.TARGET_FRAME, self.camera_frame, msg.header.stamp, rospy.Duration(0.5))
-            cam_pos, cam_rot = self.tf_listener.lookupTransform(self.TARGET_FRAME, self.camera_frame, msg.header.stamp) # Fix
-
-            rot_matrix = tft.quaternion_matrix(cam_rot)[:3, :3]
-            ray_target_frame = rot_matrix.dot(ray_camera)
-
-            t = (self.table_z - cam_pos[2]) / ray_target_frame[2] # Usa self.table_z
-            if t <= 0:
-                rospy.logwarn("Punto di impatto non valido (t<=0).")
-                return
-                
-            hit_point = np.array(cam_pos) + t * ray_target_frame
-
-        except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException, ZeroDivisionError) as e:
-            rospy.logwarn(f"Errore nel calcolo della posa con ray-casting: {e}")
+        # 2. Calcolo la posa 3D sul piano (Ray-Casting) usando la utility
+        pose_msg_utility = calculate_3d_pose(
+            u, v, msg.header.stamp, 0.0, # Passiamo yaw=0.0 perché l'orientamento viene calcolato separatamente con rvec
+            self.camera_model, self.tf_listener, 
+            self.table_z, self.TARGET_FRAME, self.camera_frame
+        )
+        
+        if pose_msg_utility is None:
+            rospy.logwarn("Punto di impatto non valido (t<=0) o errore TF.")
             return
-        
-        # 3. Creiamo il messaggio di posa finale
-        pose_msg = PoseStamped()
-        pose_msg.header.stamp = rospy.Time.now()
-        pose_msg.header.frame_id = "aruco" 
-        pose_msg.pose.position.x = hit_point[0]
-        pose_msg.pose.position.y = hit_point[1]
-        pose_msg.pose.position.z = hit_point[2] + 0.01 # Offset Z per il picking
-        
+
+        # 3. Calcolo dell'Orientamento (specifico ArUco)
+        # Ottengo la trasformazione Camera -> Base (per combinare le rotazioni)
+        try:
+            self.tf_listener.waitForTransform(self.TARGET_FRAME, self.camera_frame, msg.header.stamp, rospy.Duration(0.5))
+            _, cam_rot = self.tf_listener.lookupTransform(self.TARGET_FRAME, self.camera_frame, msg.header.stamp)
+        except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException) as e:
+            rospy.logwarn(f"Errore nel calcolo dell'orientamento con TF: {e}")
+            return
+            
         R, _ = cv2.Rodrigues(rvec)
         matrix = np.eye(4)
         matrix[:3, :3] = R
@@ -132,13 +121,21 @@ class ArucoPerceptionNode:
         (roll, pitch, yaw) = tft.euler_from_quaternion(q_marker_in_base)
         q_pure_yaw = tft.quaternion_from_euler(0.0, 0.0, yaw)
         
-        pose_msg.pose.orientation = Quaternion(*q_pure_yaw)
+        # 4. Creiamo il messaggio di posa finale unendo la POSIZIONE da utility
+        # con l'ORIENTAMENTO calcolato da rvec
+        pose_msg = PoseStamped()
+        pose_msg.header.stamp = rospy.Time.now()
+        pose_msg.header.frame_id = "aruco" 
+        pose_msg.pose.position = pose_msg_utility.pose.position # POSIZIONE da utility (Ray-Casting)
+        pose_msg.pose.orientation = Quaternion(*q_pure_yaw) # ORIENTAMENTO da rvec/TF
 
         self.pose_pub.publish(pose_msg)
         rospy.loginfo_throttle(1.0, f"Cubo aruco trovato in x={pose_msg.pose.position.x:.3f}, y={pose_msg.pose.position.y:.3f}, z={pose_msg.pose.position.z:.3f}")
             
         # Visualizzazione per debug
         cv2.aruco.drawDetectedMarkers(img, corners, ids)
+        # We need tvec[0] for drawing frame axes
+        tvec = tvecs[0] 
         cv2.drawFrameAxes(img, K, D, rvec, tvec[0], 0.05) 
         
         debug_img_msg = self.bridge.cv2_to_imgmsg(img, "bgr8")
