@@ -94,50 +94,7 @@ class ColorPerceptionNode:
         # Nota: L'angolo di cv2.minAreaRect può variare da -90 a 0 o da 0 a 90 a seconda della libreria
         
         yaw_rad = np.deg2rad(min(abs(angle), abs(90 - angle)))
-#        yaw_rad = np.deg2rad(angle) 
-        
         return (u, v, yaw_rad)
-
-    # Calcola la posa 3D del cubo dato il centro (u,v) in pixel
-    def find_pose(self, u, v, stamp, yaw_rad):
-        try:
-            # Raggio vettoriale in frame camera
-            ray_camera = self.camera_model.projectPixelTo3dRay((u, v))
-            ray_camera = np.array(ray_camera)
-
-            # Ricavo la trasformazione da camera a TARGET_FRAME
-            self.tf_listener.waitForTransform(self.TARGET_FRAME, self.camera_frame, stamp, rospy.Duration(0.5))
-            cam_pos, cam_rot = self.tf_listener.lookupTransform(self.TARGET_FRAME, self.camera_frame, stamp)
-            
-            # Porto il raggio da camera a TARGET_FRAME
-            rot_matrix = tft.quaternion_matrix(cam_rot)[:3, :3]
-            ray_world = rot_matrix.dot(ray_camera) 
-
-            # Ricavo il parametro t (forzato al piano del tavolo)
-            t = (self.table_z - cam_pos[2]) / ray_world[2]
-            if t <= 0:
-                return None
-            
-            # Calcolo la posa 3D
-            pose3d = cam_pos + t * ray_world
-            
-            # Creo il messaggio PoseStamped
-            q = tft.quaternion_from_euler(0.0, 0.0, yaw_rad)
-            msg = PoseStamped()
-            msg.header.stamp = rospy.Time.now()
-            # frame_id verrà impostato nella image_callback (colore)
-            msg.pose.position.x = pose3d[0]
-            msg.pose.position.y = pose3d[1]
-            msg.pose.position.z = pose3d[2] + 0.01 # Leggero offset Z per il picking
-            msg.pose.orientation.x = q[0]
-            msg.pose.orientation.y = q[1]
-            msg.pose.orientation.z = q[2]
-            msg.pose.orientation.w = q[3]
-            return msg
-
-        except Exception as e:
-            rospy.logerr(f"Errore nel calcolo della posa 3D: {e}")
-            return None
 
     def image_callback(self, msg):
         if not self.camera_info_received:
@@ -162,7 +119,13 @@ class ColorPerceptionNode:
             # Se trova un cubo, calcola la posa e pubblica
             if result:
                 u, v, yaw_rad = result
-                pose_msg = self.find_pose(u, v, msg.header.stamp, yaw_rad)
+                
+                # CHIAMATA ALLA FUNZIONE UTILITY
+                pose_msg = calculate_3d_pose(
+                    u, v, msg.header.stamp, yaw_rad, 
+                    self.camera_model, self.tf_listener, 
+                    self.table_z, self.TARGET_FRAME, self.camera_frame
+                )
                 
                 if pose_msg is not None:
                     pose_msg.header.frame_id = colore # Imposta l'ID del cubo
