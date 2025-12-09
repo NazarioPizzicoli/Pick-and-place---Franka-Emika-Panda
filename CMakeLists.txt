@@ -159,10 +159,18 @@ include_directories(
 
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
-# catkin_install_python(PROGRAMS
-#   scripts/my_python_script
-#   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-# )
+# Mark executable scripts (Python etc.) for installation
+catkin_install_python(PROGRAMS
+  scripts/pick_and_place_core.py
+  scripts/color_perception.py
+  scripts/aruco_perception.py
+  scripts/perception_utils.py # Utility
+  scripts/spawn_red_cube.py
+  scripts/spawn_green_cube.py
+  scripts/spawn_blue_cube.py
+  scripts/spawn_aruco_cube.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
 
 ## Mark executables for installation
 ## See http://docs.ros.org/melodic/api/catkin/html/howto/format1/building_executables.html
@@ -178,12 +186,15 @@ include_directories(
 #   RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION}
 # )
 
-## Mark cpp header files for installation
-# install(DIRECTORY include/${PROJECT_NAME}/
-#   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-#   FILES_MATCHING PATTERN "*.h"
-#   PATTERN ".svn" EXCLUDE
-# )
+# Aggiungi i file di launch
+install(DIRECTORY launch/
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
+)
+
+# Aggiungi i file di configurazione
+install(DIRECTORY config/
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/config
+)
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)
 # install(FILES
