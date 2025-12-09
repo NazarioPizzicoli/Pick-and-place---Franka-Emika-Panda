@@ -1,0 +1,52 @@
+name: ROS Catkin CI Build
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+
+jobs:
+  catkin_build:
+    runs-on: ubuntu-latest
+    
+    # Usa un container Docker con un ambiente ROS preconfigurato (es. Noetic)
+    container:
+      image: 'ros:noetic-robot-desktop'
+      options: --user root
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install System Dependencies
+        # Installa le dipendenze dichiarate in package.xml
+        run: |
+          apt update && apt install -y python3-pip python3-rosdep python3-catkin-tools
+          rosdep init || true # Permette di ignorare l'errore se già inizializzato
+          rosdep update
+          rosdep install --from-paths src --ignore-src -r -y
+
+      - name: Create Catkin Workspace Structure
+        run: |
+          # Assumendo che i tuoi file siano nella cartella principale del pacchetto
+          mkdir -p catkin_ws/src
+          mv ./* catkin_ws/src/franka_lab_dev/ || true # Sposta i contenuti nella cartella del pacchetto
+          # Ricrea la struttura del pacchetto se necessario. In questo caso, i file sono già raggruppati.
+
+      - name: Configure and Build Catkin Package
+        run: |
+          cd catkin_ws/src/franka_lab_dev/ # Entra nel pacchetto
+          # Per questo esempio, assumiamo che il pacchetto sia già strutturato correttamente.
+          
+          # Esegue la compilazione
+          cd catkin_ws
+          /opt/ros/$ROS_DISTRO/bin/catkin build
+          
+          # Il successo del comando 'catkin build' è sufficiente per segnalare 'Build Passed'
