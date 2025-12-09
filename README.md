@@ -3,7 +3,7 @@
 This repository implements a robust **Pick-and-Place** pipeline for the 7-DoF Franka Emika Panda robot in a Gazebo simulation, utilizing 3D vision for object detection based on **Color** and **ArUco Markers**.
 
 <p align="center" width="100%">
-    <img src="assets/pick_and_place_demo.gif" width="600" alt="Franka Panda performing a pick-and-place task in Gazebo.">
+    <img src="assets/pick_n_place.gif" width="600" alt="Franka Panda performing a pick-and-place task in Gazebo.">
 </p>
 
 ## Key Features
