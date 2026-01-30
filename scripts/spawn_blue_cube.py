@@ -70,7 +70,7 @@ def spawn_cube():
                                robot_namespace="/",
                                initial_pose=cube_pose,
                                reference_frame="world")
-        rospy.loginfo("Red cube spawned")
+        rospy.loginfo("Blue cube spawned in Gazebo")
     except rospy.ServiceException as e:
         rospy.logerr("Error spawn cube: %s", str(e))
 
