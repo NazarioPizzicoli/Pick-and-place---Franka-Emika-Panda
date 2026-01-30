@@ -23,7 +23,7 @@ def main():
 
     try:
         resp = spawn_model("aruco_cube", model_xml, "/", pose, "world")
-        rospy.loginfo("Cubo ArUco spawnato ✅")
+        rospy.loginfo("Cubo ArUco spawned")
     except Exception as e:
         rospy.logerr("Errore spawn: %s", e)
 
