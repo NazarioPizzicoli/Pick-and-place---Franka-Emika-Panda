@@ -23,9 +23,9 @@ def main():
 
     try:
         resp = spawn_model("aruco_cube", model_xml, "/", pose, "world")
-        rospy.loginfo("Cubo ArUco spawned")
+        rospy.loginfo("ArUco cube spawned in Gazebo")
     except Exception as e:
-        rospy.logerr("Errore spawn: %s", e)
+        rospy.logerr("Error spawn: %s", e)
 
 if __name__ == "__main__":
     main()
