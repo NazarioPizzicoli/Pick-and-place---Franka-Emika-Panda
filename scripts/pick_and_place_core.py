@@ -6,14 +6,13 @@ import moveit_commander
 import geometry_msgs.msg
 import numpy as np
 import tf.transformations as tft
-from sensor_msgs.msg import Image # Necessario per wait_for_message sulle immagini di debug
+from sensor_msgs.msg import Image
 
 class PickAndPlaceCore:
     def __init__(self):
         moveit_commander.roscpp_initialize(sys.argv)
         rospy.init_node("pick_and_place_core_node", anonymous=True)
 
-        # Load parameters
         try:
             self.params = rospy.get_param("/pick_and_place_config")
             p_params = self.params['pick_parameters']
@@ -23,7 +22,6 @@ class PickAndPlaceCore:
             rospy.logerr(f"Impossible to load ROS configuration parameters: {e}. Check pick_and_place_params.yaml.")
             sys.exit(1)
 
-        # Parametri
         self.ROLL_FIXED = p_params['roll_fixed']
         self.PITCH_FIXED = p_params['pitch_fixed']
         self.YAW_COMPENSATION = p_params['yaw_compensation']
@@ -38,64 +36,60 @@ class PickAndPlaceCore:
         self.arm_group.set_max_velocity_scaling_factor(r_settings['velocity_scaling_factor'])
         self.arm_group.set_max_acceleration_scaling_factor(r_settings['velocity_scaling_factor'])
         
-        # Stato della State Machine: Flag di blocco
         self.is_busy = False 
-        self.target_sub = None # Variabile per tenere traccia dell'oggetto Subscriber
+        self.target_sub = None
         
-        rospy.loginfo("Pick and Place Core avviato. Aspettando che la Percezione sia attiva...")
+        rospy.loginfo("Pick and Place Core started. Waiting for Perception to be active...")
         
-        # NUOVA LOGICA DI ATTESA: Assicura che i nodi di percezione stiano pubblicando (usiamo il topic di debug)
         try:
             rospy.wait_for_message("/color_detection/image_debug", Image, timeout=20.0)
-            rospy.loginfo("Percezione colore online.")
+            rospy.loginfo("Online color perception.")
         except rospy.ROSException:
-            rospy.logwarn("Timeout. Il nodo di percezione colore non sembra essere attivo.")
+            rospy.logwarn("Timeout. The color perception node does not appear to be active.")
 
-        self.start_subscription() # Avvia la sottoscrizione
+        self.start_subscription()
         
-        # Inizializzazione a Home (Movimento bloccante)
-        rospy.sleep(1.0) # Aspetta che moveit sia pronto
-        self.move_to_joints(self.home_joints, "Home Iniziale")
-    # NUOVI METODI PER GESTIRE LA SOTTOSCRIZIONE
+        rospy.sleep(1.0)
+        self.move_to_joints(self.home_joints, "Initial home")
+
     def start_subscription(self):
-        """Attiva la sottoscrizione al topic /cube_pose_stamped."""
+        """Activate subscription to the topic /cube_pose_stamped."""
         if self.target_sub is None:
             self.target_sub = rospy.Subscriber("/cube_pose_stamped", geometry_msgs.msg.PoseStamped, self.target_callback, queue_size=1)
-            rospy.loginfo("Sottoscrizione topic attivata.")
+            rospy.loginfo("Topic subscription enabled.")
 
     def stop_subscription(self):
-        """Disattiva la sottoscrizione, svuotando di fatto il buffer."""
+        """Disable the subscription, effectively emptying the buffer."""
         if self.target_sub is not None:
             self.target_sub.unregister()
             self.target_sub = None
-            rospy.loginfo("Sottoscrizione topic disattivata e buffer svuotato.")
-    # --- Controller Methods (Invariati) ---
+            rospy.loginfo("Topic subscription disabled and buffer emptied")
     def open_gripper(self):
-        rospy.loginfo("Apro il gripper...")
+        rospy.loginfo("Open gripper...")
         self.hand_group.set_joint_value_target([0.04, 0.04])
         self.hand_group.go(wait=True)
         self.hand_group.stop()
         rospy.sleep(0.5)
     
     def close_gripper(self):
-        rospy.loginfo("Chiudo il gripper...")
+        rospy.loginfo("Close gripper...")
         self.hand_group.set_joint_value_target([0.00, 0.00])
         self.hand_group.go(wait=True)
         self.hand_group.stop()
         rospy.sleep(0.5)
 
     def move_to_pose(self, poseStamped, name=""):
-        rospy.loginfo(f"Mi sposto verso la posa: {name}")
+        rospy.loginfo(f"Moving towards the pose: {name}")
         self.arm_group.set_pose_target(poseStamped)
         
         success, plan, _, error_code = self.arm_group.plan()
         
         if success:
             self.arm_group.execute(plan, wait=True)
-            rospy.loginfo(f"Movimento a {name} riuscito.")
+            rospy.loginfo(f"Movement in {name} successed")
             result = True
         else:
-            rospy.logerr(f"Pianificazione fallita per la posa: {name}. Codice errore: {error_code.val}")
+            rospy.logerr(f"Failed planning for pose: {name}. Error code: {error_code.val}")
             result = False
 
         self.arm_group.stop()
@@ -104,16 +98,16 @@ class PickAndPlaceCore:
         return result
 
     def move_to_joints(self, joint_value, name=""):
-        rospy.loginfo(f"Mi sposto verso la configurazione di giunti: {name}")
+        rospy.loginfo(f"Moving towards the configuration of joints: {name}")
         self.arm_group.set_joint_value_target(joint_value)
         
         success = self.arm_group.go(wait=True)
         
         if success:
-            rospy.loginfo(f"Movimento a {name} riuscito.")
+            rospy.loginfo(f"Movement to {name} successful")
             result = True
         else:
-            rospy.logerr(f"Movimento a giunti {name} fallito.")
+            rospy.logerr(f""Movement to {name} failed")
             result = False
 
         self.arm_group.stop()
@@ -123,33 +117,27 @@ class PickAndPlaceCore:
     # --- State Machine Logic ---
 
     def target_callback(self, msg):
-        """Gestisce il target ricevuto."""
         
-        # 1. Filtro BUSY: Se il robot si sta già muovendo, ignora il messaggio in arrivo
         if self.is_busy:
             return
 
-        # 2. Target Acquisito: Blocca il sistema e avvia la sequenza
         self.is_busy = True 
         self.stop_subscription()
-        rospy.loginfo(f"\n--- TARGET '{msg.header.frame_id}' ACQUISITO ---")
+        rospy.loginfo(f"\n--- TARGET '{msg.header.frame_id}' LOCKED ---")
         
         self.execute_sequence(msg)
         
-        # 3. PAUSA DI RESET (La tua idea del "reset/flush")
-        # Aspetta che il nodo di percezione abbia il tempo di notare la rimozione del cubo
-        rospy.loginfo("--- PAUSA DI PULIZIA SCENA (3 sec) ---")
+        rospy.loginfo("--- CLEANING SCENE (3 sec) ---")
         rospy.sleep(3.0) 
         self.start_subscription()
-        self.is_busy = False # Sblocca: pronto per il prossimo target
-        rospy.loginfo("--- SEQUENZA COMPLETATA. IN ATTESA DI NUOVO TARGET ---")
+        self.is_busy = False 
+        rospy.loginfo("--- SEQUENCE COMPLETED. WAITING FOR NEW TARGET ---")
             
     def execute_sequence(self, target_pose):
-        """Esegue la sequenza completa Pick-and-Place."""
+        """Performs the complete Pick-and-Place sequence."""
         
         cube_id = target_pose.header.frame_id 
 
-        # Calcolo Orientamento Compensato (omesso per brevità, stessa logica)
         q_input = [
             target_pose.pose.orientation.x, target_pose.pose.orientation.y,
             target_pose.pose.orientation.z, target_pose.pose.orientation.w
@@ -158,7 +146,6 @@ class PickAndPlaceCore:
         y_finale = y_cube + self.YAW_COMPENSATION
         q_finale = tft.quaternion_from_euler(self.ROLL_FIXED, self.PITCH_FIXED, y_finale)
 
-        # Preparazione delle Pose di Pick
         pre_pick_pose = geometry_msgs.msg.PoseStamped() 
         pre_pick_pose.header.frame_id = "panda_link0"
         pre_pick_pose.pose.position.x = target_pose.pose.position.x
@@ -175,12 +162,11 @@ class PickAndPlaceCore:
         
         post_pick_pose = copy.deepcopy(pre_pick_pose)
         
-        # Recupera le pose Place da YAML
         try:
             place_joints = self.joint_targets[f'place_{cube_id}']
             pre_place_joints = self.joint_targets[f'pre_place_{cube_id}']
         except KeyError:
-            rospy.logerr(f"Pose Place non definite in YAML per l'ID: {cube_id}. Fallback a Home.")
+            rospy.logerr(f"Pose Places not defined in YAML for the ID: {cube_id}. Fallback at Home.")
             self.move_to_joints(self.home_joints, "Home Fallback")
             return
 
@@ -189,20 +175,18 @@ class PickAndPlaceCore:
         self.move_to_joints(self.home_joints, "Home")
         self.open_gripper()
         
-        # Movimenti Pick (Se uno fallisce, la funzione interna ritorna False e la sequenza si ferma)
         if not self.move_to_pose(pre_pick_pose, "Pre-Pick"): return
         if not self.move_to_pose(pick_pose, "Pick"): return
         
         self.close_gripper()
         
-        # Movimenti Place
         if not self.move_to_pose(post_pick_pose, "Post-Pick"): return
         if not self.move_to_joints(pre_place_joints, "Pre-Place"): return
         if not self.move_to_joints(place_joints, "Place"): return
         
         self.open_gripper()
         
-        self.move_to_joints(self.home_joints, "Home Finale")
+        self.move_to_joints(self.home_joints, "Final Home")
 
     def run(self):
         rospy.spin()
