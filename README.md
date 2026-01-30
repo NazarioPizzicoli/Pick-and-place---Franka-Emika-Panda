@@ -46,6 +46,7 @@ cd ~/catkin_ws
 rosdep install --from-paths src --ignore-src -r -y
 catkin build
 source devel/setup.bash
+```
 
 ### 2. Launch the Full Stack
 
